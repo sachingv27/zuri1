@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ZURI Partner</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Lato', sans-serif; background-color: #F3F4F6; -webkit-tap-highlight-color: transparent; }
+        .header-bg { background: linear-gradient(135deg, #7C3AED 0%, #C026D3 100%); box-shadow: 0 4px 20px rgba(124, 58, 237, 0.3); }
+        .font-brand { font-family: 'Cinzel', serif; }
+        
+        /* VISIBLE SERVICE CARD */
+        .service-card {
+            background: white; 
+            border: 1px solid #E5E7EB; 
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s ease;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .service-card:active { transform: scale(0.98); }
+        .service-card.selected { 
+            border: 2px solid #9333EA; 
+            background-color: #FAF5FF;
+        }
+        
+        .input-field:focus { border-color: #9333EA; outline: none; ring: 2px solid #E9D5FF; }
+        .hidden-view { display: none !important; }
+        .hidden { display: none; }
+        .nav-item.active { color: #9333EA; }
+        .loader { border: 3px solid #f3f3f3; border-top: 3px solid #9333EA; border-radius: 50%; width: 16px; height: 16px; animation: spin 1s linear infinite; display: inline-block;}
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        #toast { visibility: hidden; min-width: 250px; background-color: #1F2937; color: #fff; text-align: center; border-radius: 50px; padding: 14px 20px; position: fixed; z-index: 99; left: 50%; bottom: 100px; transform: translateX(-50%); font-size: 14px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); opacity: 0; transition: opacity 0.3s, bottom 0.3s; }
+        #toast.show { visibility: visible; opacity: 1; bottom: 110px; }
+    </style>
+</head>
+<body class="select-none text-gray-800 h-screen flex flex-col overflow-hidden">
+
+    <!-- AUTH SCREEN -->
+    <div id="authView" class="fixed inset-0 z-50 flex flex-col justify-center items-center px-6 bg-gray-900 hidden-view">
+        <div class="relative z-10 w-full max-w-sm py-10">
+            <div class="text-center mb-10">
+                <h1 class="text-6xl font-brand tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-purple-200 to-pink-200">ZURI</h1>
+                <p class="text-purple-300 text-xs font-bold tracking-[0.5em] mt-3 uppercase">Partner App</p>
+            </div>
+            <!-- Login -->
+            <div id="loginForm" class="bg-white p-8 rounded-3xl shadow-xl">
+                <h2 class="text-2xl font-brand mb-6 text-center text-gray-800">Welcome</h2>
+                <div class="space-y-4">
+                    <input type="tel" id="loginMobile" placeholder="Mobile Number" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3.5 text-lg outline-none focus:border-purple-500">
+                    <input type="password" id="loginPass" placeholder="Password" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3.5 text-lg outline-none focus:border-purple-500">
+                    <button id="btnLogin" onclick="window.doLogin()" class="w-full bg-purple-600 text-white font-bold py-4 rounded-xl shadow-lg mt-2 active:scale-95 transition-all">Secure Login</button>
+                </div>
+                <div class="mt-6 text-center"><button onclick="window.toggleAuth('register')" class="text-sm font-bold text-purple-600 underline">Create Account</button></div>
+            </div>
+            <!-- Register (OTP Flow) -->
+            <div id="registerForm" class="hidden bg-white p-8 rounded-3xl shadow-xl">
+                <h2 class="text-2xl font-brand mb-6 text-center text-gray-800">Register</h2>
+                
+                <!-- Step 1: Details -->
+                <div id="regStep1" class="space-y-3">
+                    <input type="text" id="regName" placeholder="Full Name" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none">
+                    <input type="text" id="regShop" placeholder="Salon Name (Required)" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none font-bold">
+                    <input type="tel" id="regMobile" placeholder="Mobile Number" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none">
+                    <input type="password" id="regPass" placeholder="Create Password" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none">
+                    <div class="flex items-start space-x-2 my-2"><input type="checkbox" id="agreeTerms" class="mt-1 accent-purple-600 w-4 h-4"><label for="agreeTerms" class="text-xs text-gray-500">I agree to <span onclick="window.openLegal('terms')" class="underline text-purple-600 font-bold">Terms</span> & <span onclick="window.openLegal('privacy')" class="underline text-purple-600 font-bold">Privacy</span></label></div>
+                    <button id="btnGetOtp" onclick="window.sendOtp()" class="w-full bg-purple-600 text-white font-bold py-3.5 rounded-xl shadow-lg active:scale-95">Get OTP</button>
+                </div>
+
+                <!-- Step 2: OTP -->
+                <div id="regStep2" class="hidden space-y-4">
+                    <p class="text-center text-sm text-gray-500">Enter code sent to your mobile</p>
+                    <input type="tel" id="otpInput" placeholder="Enter 4-Digit OTP" class="w-full bg-gray-50 border border-purple-300 rounded-xl px-4 py-3 text-center text-xl font-bold tracking-widest outline-none focus:border-purple-600">
+                    <button id="btnVerify" onclick="window.verifyAndRegister()" class="w-full bg-green-600 text-white font-bold py-3.5 rounded-xl shadow-lg active:scale-95">Verify & Register</button>
+                    <button onclick="window.resetReg()" class="w-full text-xs text-purple-600 underline">Change Number</button>
+                </div>
+
+                <div class="mt-6 text-center"><button onclick="window.toggleAuth('login')" class="text-sm font-bold text-gray-500">Back to Login</button></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- APP SCREEN -->
+    <div id="appView" class="flex-1 flex flex-col hidden-view pb-24 relative bg-gray-50">
+        <div class="header-bg pt-12 pb-8 px-6 rounded-b-[2rem] shadow-lg relative z-10 text-white">
+            <div class="flex justify-between items-center">
+                <div><h1 class="text-3xl font-brand tracking-widest">ZURI</h1><p id="headerShopName" class="text-purple-200 text-[10px] font-bold tracking-[0.2em] uppercase">Cloud Partner</p></div>
+                <button onclick="window.openSettings()" class="bg-white/20 p-2 rounded-full backdrop-blur-md active:scale-90"><i class="fas fa-cog text-sm w-5 h-5 flex items-center justify-center"></i></button>
+            </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto pt-4">
+            <!-- HOME TAB -->
+            <div id="tabHome" class="tab-content px-4 fade-in">
+                <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 mb-4 flex justify-between items-center">
+                    <div><p class="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Today's Collection</p><h2 class="text-3xl font-brand text-gray-800">₹<span id="dashTotal">0</span></h2></div>
+                    <div class="text-right"><p class="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Clients</p><h2 class="text-xl font-bold text-purple-600"><span id="dashCount">0</span></h2></div>
+                </div>
+                
+                <div class="bg-white rounded-2xl p-5 shadow-sm mb-4 border border-gray-200">
+                    <h3 class="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider"><i class="fas fa-user mr-1"></i> Client Details</h3>
+                    <div class="space-y-3">
+                        <input type="text" id="custName" placeholder="Client Name" class="input-field w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-800">
+                        <input type="tel" id="custMobile" placeholder="Mobile Number" class="input-field w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-800 font-mono">
+                    </div>
+                </div>
+                
+                <!-- MENU SECTION -->
+                <div class="bg-white rounded-2xl p-5 shadow-sm mb-24 border border-gray-200">
+                    <h3 class="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider"><i class="fas fa-list mr-1"></i> Select Services</h3>
+                    <div id="serviceList" class="space-y-2 pb-2"></div>
+                    <div class="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center">
+                        <span class="text-sm font-bold text-gray-500">Total Bill</span>
+                        <span class="text-3xl font-brand text-purple-700">₹<span id="totalAmount">0</span></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- HISTORY TAB -->
+            <div id="tabHistory" class="tab-content px-4 hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-brand text-gray-800">Past Bills</h2>
+                    <button onclick="window.fetchHistory()" class="text-xs bg-white border border-gray-300 text-gray-600 px-3 py-1.5 rounded-full font-bold shadow-sm active:scale-95"><i class="fas fa-sync-alt mr-1"></i> Refresh</button>
+                </div>
+                <div id="historyList" class="space-y-4 pb-10"><div class="text-center text-gray-400 py-10 text-sm">Loading Bills...</div></div>
+            </div>
+            
+            <!-- INVITE TAB -->
+            <div id="tabReminder" class="tab-content px-4 hidden">
+                <div class="bg-gradient-to-br from-purple-600 to-indigo-600 text-white rounded-2xl p-6 mb-6 text-center shadow-lg">
+                    <h2 class="text-xl font-brand">Magic Invite</h2>
+                    <p class="text-purple-100 text-xs mt-1">Win back clients.</p>
+                </div>
+                <div class="bg-white rounded-2xl p-6 shadow-sm mb-4 border border-gray-200">
+                    <label class="text-xs font-bold text-gray-400 uppercase ml-1 mb-1 block">Mobile Number</label>
+                    <input type="tel" id="remMobile" placeholder="10 Digit Number" class="input-field w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-lg font-bold text-gray-800 font-mono text-center tracking-widest">
+                </div>
+                <button onclick="window.sendQuickReminder()" class="w-full bg-gray-900 text-white font-bold py-4 rounded-xl shadow-lg active:scale-95"><i class="fab fa-whatsapp mr-2"></i> Send Invite</button>
+            </div>
+        </div>
+
+        <div id="fabContainer" class="fixed bottom-24 left-0 w-full px-5 pointer-events-none z-40">
+            <button onclick="window.saveBill()" class="pointer-events-auto w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold py-4 rounded-2xl shadow-xl flex items-center justify-center space-x-3 text-lg transform transition active:scale-95"><i class="fab fa-whatsapp text-2xl"></i><span id="btnSaveText">Save Bill & Send</span></button>
+        </div>
+
+        <div class="fixed bottom-0 left-0 w-full bg-white border-t border-gray-100 pb-safe pt-2 px-6 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.05)] z-50 h-20">
+            <div class="flex justify-between items-center max-w-md mx-auto">
+                <button onclick="window.showTab('tabHome')" class="nav-item active flex flex-col items-center w-16" id="nav-tabHome"><i class="fas fa-home text-xl mb-1"></i><span class="text-[10px] font-bold">Home</span></button>
+                <button onclick="window.showTab('tabHistory')" class="nav-item text-gray-400 flex flex-col items-center w-16" id="nav-tabHistory"><i class="fas fa-receipt text-xl mb-1"></i><span class="text-[10px] font-bold">Bills</span></button>
+                <button onclick="window.showTab('tabReminder')" class="nav-item text-gray-400 flex flex-col items-center w-16" id="nav-tabReminder"><i class="fas fa-paper-plane text-xl mb-1"></i><span class="text-[10px] font-bold">Invite</span></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SETTINGS & LEGAL -->
+    <div id="settingsSheet" class="fixed inset-0 modal-backdrop z-[60] hidden flex justify-end flex-col">
+        <div class="bg-white rounded-t-3xl p-6 shadow-2xl pb-safe">
+            <div class="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6"></div>
+            <h2 class="text-xl font-brand text-gray-800 mb-4 px-2">Settings</h2>
+            <div class="space-y-3">
+                <a href="mailto:sachingv27@gmail.com" class="flex items-center p-3 bg-purple-50 rounded-xl border border-purple-100"><div class="w-8 h-8 rounded-full bg-white text-purple-600 flex items-center justify-center mr-3"><i class="fas fa-envelope"></i></div><div class="flex-1"><div class="font-bold text-gray-800 text-sm">Contact Support</div><div class="text-[10px] text-gray-500">sachingv27@gmail.com</div></div></a>
+                <div class="grid grid-cols-2 gap-3"><button onclick="window.openLegal('terms')" class="p-3 bg-gray-50 border border-gray-100 rounded-xl text-sm font-bold text-gray-600">Terms</button><button onclick="window.openLegal('privacy')" class="p-3 bg-gray-50 border border-gray-100 rounded-xl text-sm font-bold text-gray-600">Privacy</button></div>
+                <button onclick="window.doLogout()" class="w-full p-4 mt-2 bg-red-50 border border-red-100 rounded-xl text-red-600 font-bold text-sm">Log Out</button>
+            </div>
+            <button onclick="window.closeSettings()" class="w-full py-4 mt-2 text-gray-400 font-bold text-xs uppercase">Close</button>
+        </div>
+    </div>
+    <div id="legalModal" class="fixed inset-0 bg-white z-[80] hidden flex flex-col">
+        <div class="header-bg p-6 pb-4 flex justify-between items-center shadow-md text-white"><h2 id="legalTitle" class="text-xl font-brand">Legal</h2><button onclick="window.closeLegal()" class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center"><i class="fas fa-times"></i></button></div>
+        <div id="legalContent" class="flex-1 overflow-y-auto p-8 text-sm text-gray-600 leading-7 font-light"></div>
+    </div>
+    <div id="toast" class="shadow-xl"><i class="fas fa-check-circle text-green-400 mr-2 text-lg"></i><span class="font-bold tracking-wide">Success!</span></div>
+
+    <!-- LOGIC -->
+    <script type="module">
+        const firebaseConfig = { apiKey: "AIzaSyBxpblrKHQv2KlMallBqCzXai1H4Psnrlg", authDomain: "zuri-app-a205a.firebaseapp.com", projectId: "zuri-app-a205a", storageBucket: "zuri-app-a205a.firebasestorage.app", messagingSenderId: "50329823198", appId: "1:50329823198:web:920aa99d6467d7a2fd5f4f" };
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, query, where, getDocs, orderBy, limit } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+        import { getAnalytics, logEvent } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics.js";
+
+        let db, app, analytics;
+        if (Object.keys(firebaseConfig).length > 0) {
+            app = initializeApp(firebaseConfig); db = getFirestore(app);
+            try { analytics = getAnalytics(app); logEvent(analytics, 'app_open'); } catch(e) {}
+        }
+
+        // --- FULL MENU (DEFAULT LIST) ---
+        let services = [
+            { id: 1, name: 'Haircut & Style', price: 500, selected: false },
+            { id: 2, name: 'Facial (Gold)', price: 1200, selected: false },
+            { id: 3, name: 'Manicure', price: 600, selected: false },
+            { id: 4, name: 'Pedicure', price: 700, selected: false },
+            { id: 5, name: 'Eyebrow Thread', price: 50, selected: false },
+            { id: 6, name: 'Full Body Wax', price: 1500, selected: false },
+            { id: 7, name: 'Head Massage', price: 300, selected: false }
+        ];
+        let currentUser = null;
+        let generatedOtp = null;
+
+        // --- UI RENDER ---
+        window.renderServices = () => {
+            const list = document.getElementById('serviceList'); 
+            if(!list) return;
+            list.innerHTML = '';
+            
+            services.forEach((s, i) => {
+                const row = document.createElement('div');
+                row.className = `service-card flex justify-between items-center p-3 rounded-xl cursor-pointer mb-2 ${s.selected ? 'selected' : ''}`;
+                row.onclick = () => { s.selected = !s.selected; window.renderServices(); };
+                
+                row.innerHTML = `
+                    <div class="flex items-center space-x-3">
+                        <div class="w-6 h-6 rounded border-2 flex items-center justify-center ${s.selected?'border-purple-600 bg-purple-600 text-white':'border-gray-300 text-transparent'}">
+                            <i class="fas fa-check text-xs"></i>
+                        </div>
+                        <span class="font-bold text-sm ${s.selected?'text-purple-700':'text-gray-700'}">${s.name}</span>
+                    </div>
+                    ${s.selected ? 
+                        `<div class="font-mono font-bold text-purple-700 bg-purple-50 px-2 py-1 rounded text-xs">₹${s.price}</div>` : 
+                        `<div class="w-16 h-8 flex items-center justify-end">
+                            <input type="tel" value="${s.price}" onclick="event.stopPropagation()" oninput="window.updatePrice(${i},this.value)" class="w-full font-bold text-right text-sm bg-gray-50 text-gray-400 rounded px-1 py-1 outline-none border border-gray-200 focus:bg-white focus:text-gray-800 focus:border-purple-300">
+                        </div>`
+                    }
+                `;
+                list.appendChild(row);
+            });
+            
+            // Total
+            const total = services.filter(s => s.selected).reduce((a, b) => a + b.price, 0);
+            document.getElementById('totalAmount').innerText = total;
+        };
+        
+        window.updatePrice = (i, val) => { services[i].price = parseFloat(val) || 0; document.getElementById('totalAmount').innerText = services.filter(s => s.selected).reduce((a, b) => a + b.price, 0); };
+
+        // --- AUTH & OTP ---
+        window.sendOtp = async () => {
+            const mobile = document.getElementById('regMobile').value;
+            const name = document.getElementById('regName').value;
+            const shop = document.getElementById('regShop').value;
+            const pass = document.getElementById('regPass').value;
+            const terms = document.getElementById('agreeTerms').checked;
+
+            if(!name || !shop || !mobile || !pass) return alert("Please fill all details");
+            if(!terms) return alert("Please Accept Terms");
+
+            document.getElementById('btnGetOtp').innerHTML = '<span class="loader"></span> Checking...';
+
+            try {
+                // Check if user exists
+                const q = query(collection(db, "partners"), where("mobile", "==", mobile));
+                const snap = await getDocs(q);
+                if(!snap.empty) { 
+                    alert("Mobile already registered. Please Login."); 
+                    document.getElementById('btnGetOtp').innerText = "Get OTP";
+                    return; 
+                }
+
+                // SIMULATE OTP (Secure Simulation)
+                generatedOtp = Math.floor(1000 + Math.random() * 9000);
+                
+                // Show "SMS" Toast
+                window.showToast(`Code: ${generatedOtp}`); // In real app, this sends SMS
+                
+                // Switch UI
+                document.getElementById('regStep1').classList.add('hidden');
+                document.getElementById('regStep2').classList.remove('hidden');
+
+            } catch(e) { alert("Error: " + e.message); document.getElementById('btnGetOtp').innerText = "Get OTP"; }
+        };
+
+        window.verifyAndRegister = async () => {
+            const inputOtp = document.getElementById('otpInput').value;
+            if(parseInt(inputOtp) !== generatedOtp) return alert("Incorrect OTP");
+
+            const name = document.getElementById('regName').value;
+            const shop = document.getElementById('regShop').value;
+            const mobile = document.getElementById('regMobile').value;
+            const pass = document.getElementById('regPass').value;
+
+            document.getElementById('btnVerify').innerHTML = '<span class="loader"></span> Saving...';
+
+            try {
+                const docRef = await addDoc(collection(db, "partners"), { name, shop, mobile, pass, joined: new Date() });
+                localStorage.setItem('zuri_uid', docRef.id); 
+                localStorage.setItem('zuri_name', name); 
+                localStorage.setItem('zuri_shop', shop);
+                window.location.reload(); 
+            } catch(e) { alert("Save Error: " + e.message); }
+        };
+
+        window.resetReg = () => {
+            document.getElementById('regStep1').classList.remove('hidden');
+            document.getElementById('regStep2').classList.add('hidden');
+            document.getElementById('btnGetOtp').innerText = "Get OTP";
+        };
+
+        window.doLogin = async () => {
+            const mobile = document.getElementById('loginMobile').value, pass = document.getElementById('loginPass').value;
+            document.getElementById('btnLogin').innerHTML = '<span class="loader"></span> Checking...';
+            try {
+                const q = query(collection(db, "partners"), where("mobile", "==", mobile)); const snap = await getDocs(q);
+                if(snap.empty) { alert("Account not found."); document.getElementById('btnLogin').innerText = "Secure Login"; return; }
+                let found = false;
+                snap.forEach(doc => { if(doc.data().pass === pass) { found = true; localStorage.setItem('zuri_uid', doc.id); localStorage.setItem('zuri_name', doc.data().name); localStorage.setItem('zuri_shop', doc.data().shop); checkSession(); window.showToast("Welcome Back!"); } });
+                if(!found) { alert("Incorrect Password"); document.getElementById('btnLogin').innerText = "Secure Login"; }
+            } catch(e) { alert("Login Error: " + e.message); document.getElementById('btnLogin').innerText = "Secure Login"; }
+        };
+        window.doLogout = () => { if(confirm("Log out?")) { localStorage.removeItem('zuri_uid'); window.location.reload(); } };
+
+        // --- APP LOGIC ---
+        window.saveBill = async () => {
+            if(!currentUser) return;
+            const name = document.getElementById('custName').value, mobile = document.getElementById('custMobile').value, total = document.getElementById('totalAmount').innerText, selected = services.filter(s => s.selected).map(s => s.name).join(', ');
+            if(!mobile || total == "0") return alert("Enter details & select services");
+            document.getElementById('btnSaveText').innerText = 'Saving...';
+            try {
+                await addDoc(collection(db, "bills"), { partnerId: currentUser.uid, clientName: name || "Client", clientMobile: mobile, amount: parseInt(total), services: selected, date: new Date(), dateStr: new Date().toLocaleDateString('en-GB') });
+                window.showToast("Bill Saved");
+                const shopName = localStorage.getItem('zuri_shop') || "Zuri Salon";
+                const msg = `*${shopName} Digital Bill* ✨\n\nDear ${name || "Customer"},\nThanks for visiting! 🌸\n\n*Treatments:* ${selected}\n*Total Bill: ₹${total}*\n\nSee you next month! ✨`;
+                window.location.href = `https://api.whatsapp.com/send?phone=91${mobile}&text=${encodeURIComponent(msg)}`;
+                document.getElementById('custName').value = ''; document.getElementById('custMobile').value = ''; services.forEach(s => s.selected = false); window.renderServices(); window.fetchHistory(); 
+            } catch(e) { alert("Error: " + e.message); }
+            document.getElementById('btnSaveText').innerText = 'Save Bill & Send';
+        };
+
+        window.fetchHistory = async () => {
+            if(!currentUser) return;
+            const list = document.getElementById('historyList');
+            const q = query(collection(db, "bills"), where("partnerId", "==", currentUser.uid));
+            try {
+                const snap = await getDocs(q); list.innerHTML = ''; let allBills = [];
+                snap.forEach(doc => allBills.push(doc.data()));
+                allBills.sort((a, b) => b.date.seconds - a.date.seconds);
+                const todayStr = new Date().toLocaleDateString('en-GB'); const now = new Date();
+                let todayTotal = 0; let todayCount = 0;
+                allBills.forEach((d, index) => {
+                    if(d.dateStr === todayStr) { todayTotal += parseInt(d.amount || 0); todayCount++; }
+                    
+                    // --- 30 DAY LOGIC ---
+                    const billDate = new Date(d.date.seconds * 1000);
+                    const diffDays = Math.ceil(Math.abs(now - billDate) / (1000 * 60 * 60 * 24)); 
+                    const isDue = diffDays >= 30; // 30 Days
+
+                    const el = document.createElement('div');
+                    el.className = "bg-white p-4 rounded-xl border border-gray-100 shadow-sm mb-3 flex flex-col";
+                    const reminderBtn = isDue 
+                        ? `<button onclick="window.sendDueReminder('${d.clientName}', '${d.clientMobile}')" class="mt-3 w-full bg-green-50 hover:bg-green-100 text-green-700 font-bold py-2.5 rounded-xl text-xs flex items-center justify-center border border-green-200 transition-colors"><i class="fab fa-whatsapp mr-2 text-lg"></i> Send 30-Day Reminder</button>` 
+                        : `<div class="text-[10px] text-gray-400 mt-2 text-right italic">Visited ${diffDays} days ago</div>`;
+                    el.innerHTML = `<div class="flex justify-between items-start"><div><div class="text-[10px] text-gray-400 font-bold mb-1">BILL #${1000 + index}</div><div class="font-bold text-gray-800">${d.clientName}</div><div class="text-[10px] text-gray-500 mt-0.5">${d.dateStr} • <span class="font-mono font-bold text-purple-600">₹${d.amount}</span></div><div class="text-[10px] text-purple-400 mt-1 truncate w-48">${d.services}</div></div></div>${reminderBtn}`;
+                    list.appendChild(el);
+                });
+                document.getElementById('dashTotal').innerText = todayTotal; document.getElementById('dashCount').innerText = todayCount;
+                if(allBills.length === 0) list.innerHTML = '<div class="text-center text-gray-400 mt-10 text-sm">No bills found.</div>';
+            } catch(e) { console.error(e); }
+        };
+
+        window.sendDueReminder = (name, mobile) => {
+            const shopName = localStorage.getItem('zuri_shop') || "our shop";
+            const msg = `Hello ${name || "Beautiful"}! ✨\n\nIt's been 30 days since your last visit to *${shopName}*.\nWe miss you! Come back this week for a special treat! 💆‍♀️\n\nReply to book.`;
+            window.location.href = `https://api.whatsapp.com/send?phone=91${mobile}&text=${encodeURIComponent(msg)}`;
+        };
+
+        const TERMS = `<h3>1. Service Agreement</h3><p>By registering, you agree to use Zuri Partner responsibly.</p><h3>2. Contact</h3><p>sachingv27@gmail.com</p>`;
+        const PRIVACY = `<h3>1. Info Collection</h3><p>Name, Shop Name, Mobile.</p><h3>2. Security</h3><p>Data stored via Google Firebase.</p>`;
+        window.openLegal = (t) => { document.getElementById('legalModal').classList.remove('hidden'); document.getElementById('legalTitle').innerText = t==='terms'?"Terms":"Privacy"; document.getElementById('legalContent').innerHTML = t==='terms'?TERMS:PRIVACY; };
+        window.closeLegal = () => document.getElementById('legalModal').classList.add('hidden');
+        window.toggleAuth = (v) => { document.getElementById('loginForm').classList.toggle('hidden', v==='register'); document.getElementById('registerForm').classList.toggle('hidden', v==='login'); };
+        window.openSettings = () => document.getElementById('settingsSheet').classList.remove('hidden');
+        window.closeSettings = () => document.getElementById('settingsSheet').classList.add('hidden');
+        window.showTab = (id) => { 
+            document.querySelectorAll('.tab-content').forEach(e=>e.classList.add('hidden')); document.getElementById(id).classList.remove('hidden');
+            document.querySelectorAll('.nav-item').forEach(e=> { e.classList.remove('active', 'text-purple-600'); e.classList.add('text-gray-400'); });
+            document.getElementById('nav-'+id).classList.add('active', 'text-purple-600');
+            if(id==='tabHistory') window.fetchHistory();
+        };
+        window.showToast = (m) => { const t = document.getElementById('toast'); t.innerHTML = `<i class="fas fa-check-circle text-green-400 mr-2 text-lg"></i><span class="font-bold tracking-wide">${m}</span>`; t.className = "show"; setTimeout(()=>t.className="", 3000); };
+        window.sendQuickReminder = () => { const m = document.getElementById('remMobile').value; if(m) window.location.href = `https://api.whatsapp.com/send?phone=91${m}&text=Hello! We miss you. Visit us soon!`; };
+
+        function checkSession() {
+            const uid = localStorage.getItem('zuri_uid');
+            if(uid) {
+                currentUser = { uid, name: localStorage.getItem('zuri_name') };
+                document.getElementById('authView').classList.add('hidden-view');
+                document.getElementById('appView').classList.remove('hidden-view');
+                document.getElementById('displayUser').innerText = "Hi, " + currentUser.name.split(' ')[0];
+                const savedShop = localStorage.getItem('zuri_shop');
+                if(savedShop) document.getElementById('headerShopName').innerText = savedShop;
+                
+                window.renderServices(); 
+                setTimeout(window.renderServices, 500); 
+                window.fetchHistory();
+            } else {
+                document.getElementById('authView').classList.remove('hidden-view');
+                document.getElementById('appView').classList.add('hidden-view');
+            }
+        }
+        
+        window.renderServices();
+        checkSession();
+    </script>
+</body>
+</html>
